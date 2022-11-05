@@ -20,8 +20,6 @@ class TransferSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
   recipient = RecipientSerializer(read_only=True)
   recipient_id = serializers.IntegerField(write_only=True)
-  transfer = TransferSerializer(read_only=True)
-  transfer_id = serializers.IntegerField(write_only=True)
 
   class Meta:
     model = Transaction

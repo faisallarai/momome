@@ -1,4 +1,5 @@
 import requests
+import uuid
 
 from decouple import config
 from celery import shared_task
@@ -40,43 +41,70 @@ def create_banks():
       updated_at=row['updatedAt']) for row in banks]
     Bank.objects.bulk_create(batch)
     
-    
-def initiate_tranfer(data):
+@shared_task
+def initiate_tranfer(data, recipient_id):
   headers = {
     'Authorization': 'Bearer ' + config('PAYSTACK_ACCESS_TOKEN')
   }
   endpoint = f'https://api.paystack.co/transfer'
   response = requests.post(endpoint, data=data, headers=headers)
   transfer = response.json()
+  
+  transfer_code = transfer.get('data').get('transfer_code')
+  status = transfer.get('data').get('status')
+  reason = transfer.get('data').get('reason')
+  amount = transfer.get('data').get('amount')
+  currency = transfer.get('data').get('currency')
+  reference = transfer.get('data').get('reference')
+  source = transfer.get('data').get('source')
+  
+  data = {
+    "recipient_id": recipient_id,
+    "amount": amount,
+    "currency": currency,
+    "reference":  reference,
+    "transfer_code": transfer_code,
+    "status": status,
+    "reason": reason,
+    "source": source
+  }
 
-  # status = transfer.get('data').get('status')
-  # if status != 'success':
-  #   return Response(transfer)
-  
-  # transfer_code = transfer.get('data').get('transfer_code')
-  # status = transfer.get('data').get('status')
-  # reason = transfer.get('data').get('reason')
-  
-  # print(transfer_code)
-  # data = {
-  #   "amount": amount,
-  #   "currency": currency,
-  #   "reference":  reference,
-  #   "recipient_id": recipient_id,
-  #   "transfer_code": transfer_code,
-  #   "status": status,
-  #   "reference": reference,
-  #   "source": 'balance'
-  # }
-  
   serializer = TransferSerializer(data=data)
   serializer.is_valid(raise_exception=True)
   serializer.save()
+  
+  return serializer.data
 
-def initiate_bulk_tranfer(data):
+@shared_task
+def initiate_bulk_tranfer(data, resp_data):
   headers = {
     'Authorization': 'Bearer ' + config('PAYSTACK_ACCESS_TOKEN')
   }
   endpoint = f'https://api.paystack.co/transfer/bulk'
   response = requests.post(endpoint, data=data, headers=headers)
-  return response.json()
+  transfer = response.json()
+  print('t',transfer)
+  print('d',data)
+  print('d',resp_data)
+
+  t_data = []
+  
+  for index, row in enumerate(transfer.get('data')):
+    obj = {
+      "amount": row['amount'],
+      "transfer_code": row['transfer_code'],
+      "currency": row['currency'],
+      "status": row['status'],
+      "recipient_id": resp_data[index].get('recipient_id'),
+      "reason": resp_data[index].get('reason'),
+      "source": 'balance'
+    }
+    print('obj',obj)
+    t_data.append(obj)
+    print(t_data)
+  
+  print('t_data', t_data)
+  serializer = TransferSerializer(data=t_data, many=True)
+  serializer.is_valid(raise_exception=True)
+  print('errors', serializer.errors)
+  serializer.save()
