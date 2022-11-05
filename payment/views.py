@@ -6,15 +6,18 @@ from decouple import config
 from django.shortcuts import render
 from django.db import transaction
 from django.core.cache import cache
+from django.views.decorators.csrf import csrf_exempt
+
 
 from rest_framework import status, viewsets, views
-from rest_framework.decorators import action, permission_classes, api_view
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .serializers import TransferSerializer, RecipientSerializer, TransactionSerializer
 from .models import Transfer, Recipient
 from momome.tasks import initiate_tranfer, initiate_bulk_tranfer
+
 # Create your views here.
 
 def validate_account_number(bank_code, account_number):
@@ -32,14 +35,19 @@ def validate_account_number(bank_code, account_number):
     return value
 
 def create_tranfer_recipient(data):
-  key = f"transferrecipient/{data.account_name}/{data.account_number}/{data.bank_code}/{data.currency}"
+  name = data.get('name')
+  account_number = data.get('account_number')
+  bank_code = data.get('bank_code')
+  currency = data.get('currency')
+
+  key = f"transferrecipient/{name}/{account_number}/{bank_code}/{currency}"
   value = cache.get(key)
   if value == None:
     headers = {
       'Authorization': 'Bearer ' + config('PAYSTACK_ACCESS_TOKEN')
     }
     endpoint = f'https://api.paystack.co/transferrecipient'
-    response = requests.post(endpoint, data=data, headers=headers)
+    response = requests.post(endpoint, data=json.dumps(data), headers=headers)
     cache.set(key, response.json())
     return response.json()
   else:
@@ -83,17 +91,18 @@ class TransferView(viewsets.ModelViewSet):
     is_deleted = False
     bank_name = ''
     recipient_id = 0
-    recipient = list(Recipient.objects.filter(account_number=account_number,bank_code=bank_code))
-    
+    recipient = list(Recipient.objects.filter(account_number=str(account_number),bank_code=str(bank_code)))
     if not recipient:
       # Verify account number
       account = validate_account_number(bank_code, account_number)
-      
+
       if account.get('status') is not True:
+        print('rein', account)
         return Response(account)
       
       account_name = account.get('data').get('account_name')
       
+      print('acn', account_name)
       # Transfer recipient
       recipient_data = {
         "name": account_name, 
@@ -103,7 +112,7 @@ class TransferView(viewsets.ModelViewSet):
         "type": type
       }
     
-      recipient = create_tranfer_recipient(json.dumps(recipient_data))
+      recipient = create_tranfer_recipient(recipient_data)
       if recipient.get('status') is not True:
         return Response(recipient)
       
@@ -171,7 +180,7 @@ class TransferView(viewsets.ModelViewSet):
     # serializer.is_valid(raise_exception=True)
     # serializer.save()
     
-    return Response({'message': 'Transfered queued successfully.', "data": {"reference":reference}})
+    return Response({'message': 'Transfer queued successfully.', "data": {"reference": reference}}, status=status.HTTP_201_CREATED)
   
   @action(detail=False, methods=['post'],permission_classes=[AllowAny])
   def bulk(self, request, *args, **kwargs):
@@ -213,7 +222,7 @@ class TransferView(viewsets.ModelViewSet):
             "currency": currency
           }
         
-          recipient = create_tranfer_recipient(json.dumps(recipient_data))
+          recipient = create_tranfer_recipient(recipient_data)
           if recipient.get('status') is not True:
             return Response(recipient)
           
@@ -292,7 +301,7 @@ class TransferView(viewsets.ModelViewSet):
       # serializer.is_valid(raise_exception=True)
       # serializer.save()
     
-    return Response({'message': 'Transfers queued successfully.'})
+    return Response({'message': 'Transfers queued successfully.'}, status=status.HTTP_201_CREATED)
   
   @action(detail=False, methods=['post'], permission_classes=[AllowAny])
   def transaction(self, request, *args, **kwargs):
@@ -327,28 +336,28 @@ class TransferView(viewsets.ModelViewSet):
     if recipient:
       recipient_id = recipient[0].id
       
-    # print('recipient_code', recipient_code)
-    # print('recipient_id', recipient_id)
-    # print('name', name)
-    # print('bank_code', bank_code)
-    # print('bank_name', bank_name)
-    # print('account_name', account_name)
-    # print('account_number', account_number)
-    # print('currency', currency)
-    # print('email', email)
-    # print('is_deleted', is_deleted)
-    # print('active', active)
-    # print('type', type)
-    # print('transfer_code', transfer_code)
-    # print('transferred_at', transferred_at)
-    # print('amount', amount)
-    # print('reason', reason)
-    # print('description', description)
-    # print('source', source)
-    # print('reference', reference)
-    # print('status', status)
-    
-  
+    print('recipient_code', recipient_code)
+    print('recipient_id', recipient_id)
+    print('name', name)
+    print('bank_code', bank_code)
+    print('bank_name', bank_name)
+    print('account_name', account_name)
+    print('account_number', account_number)
+    print('currency', currency)
+    print('email', email)
+    print('is_deleted', is_deleted)
+    print('active', active)
+    print('type', type)
+    print('transfer_code', transfer_code)
+    print('transferred_at', transferred_at)
+    print('amount', amount)
+    print('reason', reason)
+    print('description', description)
+    print('source', source)
+    print('reference', reference)
+    print('status', status)
+    print('fee_charged', fee_charged)
+
     trx_obj = {
       'recipient_code': recipient_code,
       'recipient_id': recipient_id,
@@ -377,7 +386,7 @@ class TransferView(viewsets.ModelViewSet):
     serializer.is_valid(raise_exception=True)
     serializer.save()
     
-    return Response(status=200)
+    return Response({'message': 'Saved successfully.'}, status=200)
   
 class TestExceptionView(views.APIView):
   permission_classes = [AllowAny]

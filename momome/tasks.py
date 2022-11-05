@@ -46,6 +46,7 @@ def initiate_tranfer(data, recipient_id):
   headers = {
     'Authorization': 'Bearer ' + config('PAYSTACK_ACCESS_TOKEN')
   }
+  
   endpoint = f'https://api.paystack.co/transfer'
   response = requests.post(endpoint, data=data, headers=headers)
   transfer = response.json()
