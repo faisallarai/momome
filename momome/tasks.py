@@ -23,7 +23,6 @@ def create_banks():
   if response.status_code in [200,201]:
     data = response.json()
     banks = data.get('data')
-    print(banks)
     batch = [Bank(
       id= row['id'], 
       name= row['name'],
@@ -84,9 +83,6 @@ def initiate_bulk_tranfer(data, resp_data):
   endpoint = f'https://api.paystack.co/transfer/bulk'
   response = requests.post(endpoint, data=data, headers=headers)
   transfer = response.json()
-  print('t',transfer)
-  print('d',data)
-  print('d',resp_data)
 
   t_data = []
   
@@ -104,8 +100,6 @@ def initiate_bulk_tranfer(data, resp_data):
     t_data.append(obj)
     print(t_data)
   
-  print('t_data', t_data)
   serializer = TransferSerializer(data=t_data, many=True)
   serializer.is_valid(raise_exception=True)
-  print('errors', serializer.errors)
   serializer.save()
