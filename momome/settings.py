@@ -105,7 +105,7 @@ INTERNAL_IPS =(
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
-        # 'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -132,7 +132,7 @@ CELERY_TASK_SERIALIZER = 'json'
 # }
 
 
-CACHE_TTL = 60 * 15
+CACHE_TTL = 60 * 60
 
 CACHES = {
     "default": {
