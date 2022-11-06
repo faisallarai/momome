@@ -12,7 +12,7 @@ Transfer Management
 
 - Send
 - Bulk
-- Transaction: Webhook (Use ngrok to test)
+- Transaction: Webhook (Use ngrok to test) / Validate Signature
 - Task
 
 Exception Handling
@@ -34,7 +34,12 @@ Queueing
 Logging
 
 - ELK
+- Sentry
 
 Text Search
 
 - Elastic Search
+
+Policies
+
+- drf-access-policy
