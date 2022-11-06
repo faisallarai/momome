@@ -12,10 +12,10 @@ from rest_framework import permissions
 from .serializers import BankSerializer
 from .models import Bank
 from momome.tasks import create_banks
+from .policies import BankAccessPolicy
 
 # Create your views here.
 def fetch_banks():
-  
   try:
     key = f"bank?currency=GHS&type=mobile_money"
     endpoint = 'https://api.paystack.co/bank?currency=GHS&type=mobile_money'
@@ -35,12 +35,7 @@ def fetch_banks():
 class BankView(viewsets.ModelViewSet):
   serializer_class = BankSerializer
   queryset = Bank.objects.all()
-  permission_classes = [permissions.AllowAny]
-  permission_classes_by_action = {
-    'create': [permissions.IsAdminUser],
-    'list': [permissions.AllowAny],
-    'retrieve': [permissions.AllowAny]
-  }
+  permission_classes = (BankAccessPolicy,)
   
   def create(self, request, *args, **kwargs):
     print(Bank.objects.count())

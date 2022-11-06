@@ -1,17 +1,26 @@
 import json
+from decouple import config
 
+from django.test import Client
 from django.urls import reverse
+from django.contrib.auth.models import Group
+
+
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, CoreAPIClient
+from payment.helpers import get_digest
 from payment.models import Transfer, Transaction, Recipient
 from rest_framework.test import APIRequestFactory
+from rest_framework.test import force_authenticate
+from rest_framework.test import APIClient
 
 from user.models import CustomUser
 
 # Using the standard RequestFactory API to create a form POST request
 
-
 class PaymentTests(APITestCase):
+  token_url = "/auth/token/"
+
   @classmethod
   def setUpTestData(cls):
     # Set up non-modified objects used by all test methods
@@ -30,6 +39,16 @@ class PaymentTests(APITestCase):
       description = ''
     )
     
+    user = CustomUser.objects._create_user(
+      email = 'test@gmail.com',
+      password = 'fsfa892p5aq6789',
+    )
+    
+    administrator = Group.objects.get_or_create(name="administrator")
+    print('administrator',administrator)
+    print('administrator',administrator[0])
+    user.groups.add(administrator[0])
+    
   def test_transfer_send(self):
     url = "/payments/transfer/send/"
     data = {
@@ -43,8 +62,23 @@ class PaymentTests(APITestCase):
       "description": ""
     }
     print(data)
+    user_data = {
+      'email': 'test@gmail.com',
+      'password': 'fsfa892p5aq6789'
+    }
+    
+    auth_resp = self.client.post(self.token_url, data=json.dumps(user_data), content_type='application/json')
+    token_data = auth_resp.json()
+    token = token_data.get('access')
+    print(token)
+    headers = {
+      "Authorization": "Bearer " + token
+    }
+    
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
 
-    response = self.client.post(url, data=json.dumps(data), content_type='application/json')
+    response = client.post(url, data=json.dumps(data), content_type='application/json')
     t_data = response.json()
 
     self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -84,8 +118,20 @@ class PaymentTests(APITestCase):
           "description": ""
       }
     ]
-
-    response = self.client.post(url, data=json.dumps(data), content_type='application/json')
+    user_data = {
+      'email': 'test@gmail.com',
+      'password': 'fsfa892p5aq6789'
+    }
+    auth_resp = self.client.post(self.token_url, data=json.dumps(user_data), content_type='application/json')
+    token_data = auth_resp.json()
+    token = token_data.get('access')
+    print(token)
+    headers = {
+      "Authorization": "Bearer " + token
+    }
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
+    response = client.post(url, data=json.dumps(data), content_type='application/json')
     t_data = response.json()
     print('d',t_data)
 
@@ -148,9 +194,9 @@ class PaymentTests(APITestCase):
         "fee_charged": 0
       }
     }
-
-    response = self.client.post(url, data=json.dumps(data), content_type='application/json')
-    t_data = response.json()
-
+  
+    digest = get_digest(config('PAYSTACK_ACCESS_TOKEN'), data)
+    client = APIClient()
+    client.credentials(HTTP_x_paystack_signature=digest)
+    response = client.post(url, json.dumps(data), content_type='application/json')
     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    self.assertEqual(t_data.get('message'), 'Saved successfully.')

@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!_wm_dv7k5q6$7u+h-qdzom4md1fnb*#wofm*qa+870gindb93'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -30,7 +30,10 @@ DEBUG = True
 ALLOWED_HOSTS = [
     '3874-154-160-23-187.eu.ngrok.io',
     '1bb0-34-89-120-52.eu.ngrok.io',
-    'localhost'
+    'localhost',
+    '52.31.139.75',
+    '52.49.173.169',
+    '52.214.14.220'
 ]
 
 
@@ -49,7 +52,7 @@ INSTALLED_APPS = [
     'user',
     'payment',
     'debug_toolbar',
-    'rest_framework_simplejwt'
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
@@ -109,7 +112,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        "rest_framework.authentication.SessionAuthentication",
         'rest_framework.authentication.BasicAuthentication',
     ),
     'EXCEPTION_HANDLER': 'momome.handlers.custom_exception_handler'
