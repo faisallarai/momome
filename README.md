@@ -1,45 +1,68 @@
-User Management
+# Completed
+
+## User Management
 
 - Register
 - Authentication
 - Authorization
 
-Bank Management
+## Bank Management
 
 - List Banks
 
-Transfer Management
+## Transfer Management
 
 - Send
 - Bulk
 - Transaction: Webhook (Use ngrok to test) / Validate Signature
 - Task
 
-Exception Handling
+## Exception Handling
 
 - Exception Handler
 
-Debugging
+## Debugging
 
 - django-debug-toolbar
 
-Caching
+## Caching
 
 - Redis
 
-Queueing
+## Queueing
+
+### Task Queue
+
+- Celery
+
+### Broker
 
 - RabbitMQ
 
-Logging
+### Backend
 
-- ELK
-- Sentry
+- Redis
 
-Text Search
-
-- Elastic Search
-
-Policies
+## Policies
 
 - drf-access-policy
+
+# Pending
+
+## Text Search
+
+- ElasticSearch
+
+## Search
+
+- SearchFilter / djangorestframework-word-filter
+- django-filter / django-rest-framework-filters
+
+## Ordering
+
+- OrderingFilter
+
+## Logging
+
+- Sentry
+- ELK
