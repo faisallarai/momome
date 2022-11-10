@@ -28,6 +28,7 @@ urlpatterns = [
     path('users/', include('user.urls')),
     path('banks/', include('bank.urls')),
     path('payments/', include('payment.urls')),
+    path('transactions/', include('transaction.urls')),
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('test/', TestExceptionView.as_view())

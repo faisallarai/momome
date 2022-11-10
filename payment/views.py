@@ -8,15 +8,15 @@ from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import status, viewsets, views
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from payment.helpers import create_tranfer_recipient, get_digest, validate_account_number
+from payment.helpers import create_tranfer_recipient, validate_account_number
 
 from payment.policies import TransferAccessPolicy
 
-from .serializers import TransferSerializer, RecipientSerializer, TransactionSerializer
+from .serializers import TransferSerializer, RecipientSerializer
 from .models import Transfer, Recipient
-from momome.tasks import initiate_tranfer, initiate_bulk_tranfer
+from momome.tasks import initiate_transfer, initiate_bulk_transfer
 
 # Create your views here.
 
@@ -24,7 +24,6 @@ class TransferView(viewsets.ModelViewSet):
   serializer_class = TransferSerializer
   queryset = Transfer.objects.select_related('recipient')
   permission_classes = (TransferAccessPolicy, )
-
   
   @action(detail=False, methods=['post'])
   def send(self, request, *args, **kwargs):
@@ -32,7 +31,7 @@ class TransferView(viewsets.ModelViewSet):
     bank_code = request.data.get('bank_code', None)
     account_number = request.data.get('account_number', None)
     currency = request.data.get('currency', None)
-    amount = request.data.get('amount', None)
+    amount = int(request.data.get('amount', 0)) * 100
     reason = request.data.get('reason', None)
     email = request.data.get('email', None)
     description = request.data.get('description', None)
@@ -50,12 +49,10 @@ class TransferView(viewsets.ModelViewSet):
       account = validate_account_number(bank_code, account_number)
 
       if account.get('status') is not True:
-        print('rein', account)
         return Response(account)
       
       account_name = account.get('data').get('account_name')
       
-      print('acn', account_name)
       # Transfer recipient
       recipient_data = {
         "name": account_name, 
@@ -108,9 +105,9 @@ class TransferView(viewsets.ModelViewSet):
       "recipient": recipient_code, 
       "reason": reason,
     }
-    initiate_tranfer.delay(transfer_data, recipient_id)
+    initiate_transfer.delay(transfer_data, recipient_id)
     
-    return Response({'message': 'Transfer queued successfully.', "data": {"reference": reference}}, status=status.HTTP_201_CREATED)
+    return Response({'status': True, 'message': 'Transfer queued successfully.', "data": {"reference": reference}}, status=status.HTTP_201_CREATED)
   
   @action(detail=False, methods=['post'])
   def bulk(self, request, *args, **kwargs):
@@ -205,98 +202,9 @@ class TransferView(viewsets.ModelViewSet):
           "transfers": transfer_data
         }
       
-      initiate_bulk_tranfer.delay(json.dumps(obj), resp_data)
+      initiate_bulk_transfer.delay(json.dumps(obj), resp_data)
       
-    return Response({'message': 'Transfers queued successfully.'}, status=status.HTTP_201_CREATED)
-  
-  @action(detail=False, methods=['post'], permission_classes=[AllowAny])
-  def transaction(self, request, *args, **kwargs):
-    print('webhook', request.data)
-    digest = get_digest(config('PAYSTACK_ACCESS_TOKEN'), request.data)
-    
-    # print('digest',digest)
-    # print('signature', request.headers.get("x-paystack-signature",None))
-    if digest == request.headers.get("x-paystack-signature",None):
-      # Recipient
-      recipient_code = request.data.get('data').get('recipient').get('recipient_code')
-      recipient_id = None
-      name = request.data.get('data').get('recipient').get('name')
-      bank_code = request.data.get('data').get('recipient').get('details').get('bank_code')
-      bank_name = request.data.get('data').get('recipient').get('details').get('bank_name')
-      account_name = request.data.get('data').get('recipient').get('details').get('account_name')
-      account_number = request.data.get('data').get('recipient').get('details').get('account_number')
-      currency = request.data.get('data').get('recipient').get('currency')
-      email = request.data.get('data').get('recipient').get('email')
-      is_deleted = request.data.get('data').get('recipient').get('is_deleted')
-      active = request.data.get('data').get('recipient').get('active')
-      type = request.data.get('data').get('recipient').get('type')
-      
-      # Transfer
-      transfer_code = request.data.get('data').get('transfer_code')
-      transferred_at = request.data.get('data').get('transferred_at')
-      amount = request.data.get('data').get('amount')
-      reason = request.data.get('data').get('reason')
-      description = request.data.get('data').get('description')
-      source = request.data.get('data').get('source')
-      reference = request.data.get('data').get('reference')
-      status = request.data.get('data').get('status')
-      fee_charged = request.data.get('data').get('fee_charged')
-
-      recipient = list(Recipient.objects.filter(recipient_code=recipient_code))
-      if recipient:
-        recipient_id = recipient[0].id
-        
-      # print('recipient_code', recipient_code)
-      # print('recipient_id', recipient_id)
-      # print('name', name)
-      # print('bank_code', bank_code)
-      # print('bank_name', bank_name)
-      # print('account_name', account_name)
-      # print('account_number', account_number)
-      # print('currency', currency)
-      # print('email', email)
-      # print('is_deleted', is_deleted)
-      # print('active', active)
-      # print('type', type)
-      # print('transfer_code', transfer_code)
-      # print('transferred_at', transferred_at)
-      # print('amount', amount)
-      # print('reason', reason)
-      # print('description', description)
-      # print('source', source)
-      # print('reference', reference)
-      # print('status', status)
-      # print('fee_charged', fee_charged)
-
-      trx_obj = {
-        'recipient_code': recipient_code,
-        'recipient_id': recipient_id,
-        'name': name,
-        'bank_code': bank_code,
-        'bank_name': bank_name,
-        'account_name': account_name,
-        'account_number': account_number,
-        'currency': currency,
-        'email': email,
-        'is_deleted': is_deleted,
-        'active': active,
-        'type': type,
-        'transfer_code': transfer_code,
-        'transferred_at': transferred_at,
-        'amount': amount,
-        'reason': reason,
-        'description': description,
-        'source': source,
-        'reference': reference,
-        'status': status,
-        'fee_charged': fee_charged
-      }
-      
-      serializer = TransactionSerializer(data=trx_obj)
-      serializer.is_valid(raise_exception=True)
-      serializer.save()
-      
-    return Response(status=200)
+    return Response({'status': True, 'message': 'Transfers queued successfully.'}, status=status.HTTP_201_CREATED)
   
 class TestExceptionView(views.APIView):
   permission_classes = [AllowAny]

@@ -5,7 +5,7 @@ from rest_framework.routers import DefaultRouter
 from user.views import CustomUserView
 
 router = DefaultRouter()
-router.register('user', CustomUserView)
+router.register('', CustomUserView, basename='')
 
 urlpatterns = [
     path('', include(router.urls))

@@ -5,11 +5,6 @@ from rest_access_policy import AccessPolicy
 class TransferAccessPolicy(AccessPolicy):
   statements = [
     {
-      "action": ["transaction"],
-      "principal": ["*"],
-      "effect": "allow"
-    },
-    {
       "action": ["list", "retrieve"],
       "principal": ["group:administrator", "group:executive", "authenticated"],
       "effect": "allow"

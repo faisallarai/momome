@@ -1,4 +1,4 @@
-import requests
+import requests, json
 import uuid
 
 from decouple import config
@@ -41,7 +41,7 @@ def create_banks():
     Bank.objects.bulk_create(batch)
     
 @shared_task
-def initiate_tranfer(data, recipient_id):
+def initiate_transfer(data, recipient_id):
   headers = {
     'Authorization': 'Bearer ' + config('PAYSTACK_ACCESS_TOKEN')
   }
@@ -49,34 +49,37 @@ def initiate_tranfer(data, recipient_id):
   endpoint = f'https://api.paystack.co/transfer'
   response = requests.post(endpoint, data=data, headers=headers)
   transfer = response.json()
-  
-  transfer_code = transfer.get('data').get('transfer_code')
-  status = transfer.get('data').get('status')
-  reason = transfer.get('data').get('reason')
-  amount = transfer.get('data').get('amount')
-  currency = transfer.get('data').get('currency')
-  reference = transfer.get('data').get('reference')
-  source = transfer.get('data').get('source')
-  
-  data = {
-    "recipient_id": recipient_id,
-    "amount": amount,
-    "currency": currency,
-    "reference":  reference,
-    "transfer_code": transfer_code,
-    "status": status,
-    "reason": reason,
-    "source": source
-  }
+  if transfer.get('status') == True:
+    
+    transfer_code = transfer.get('data').get('transfer_code')
+    status = transfer.get('data').get('status')
+    reason = transfer.get('data').get('reason')
+    amount = int(transfer.get('data').get('amount')) / 100
+    currency = transfer.get('data').get('currency')
+    reference = transfer.get('data').get('reference')
+    source = transfer.get('data').get('source')
+    
+    data = {
+      "recipient_id": recipient_id,
+      "amount": amount,
+      "currency": currency,
+      "reference":  reference,
+      "transfer_code": transfer_code,
+      "status": status,
+      "reason": reason,
+      "source": source
+    }
 
-  serializer = TransferSerializer(data=data)
-  serializer.is_valid(raise_exception=True)
-  serializer.save()
-  
-  return serializer.data
+    serializer = TransferSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    
+    return serializer.data
+  else:
+    return transfer
 
 @shared_task
-def initiate_bulk_tranfer(data, resp_data):
+def initiate_bulk_transfer(data, resp_data):
   headers = {
     'Authorization': 'Bearer ' + config('PAYSTACK_ACCESS_TOKEN')
   }
@@ -96,9 +99,7 @@ def initiate_bulk_tranfer(data, resp_data):
       "reason": resp_data[index].get('reason'),
       "source": 'balance'
     }
-    print('obj',obj)
     t_data.append(obj)
-    print(t_data)
   
   serializer = TransferSerializer(data=t_data, many=True)
   serializer.is_valid(raise_exception=True)
