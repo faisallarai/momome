@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Transfer, Transaction, Recipient
+from .models import Transfer, Recipient
 
     
 class RecipientSerializer(serializers.ModelSerializer):
@@ -16,12 +16,3 @@ class TransferSerializer(serializers.ModelSerializer):
   class Meta:
     model = Transfer
     fields = '__all__'
-
-class TransactionSerializer(serializers.ModelSerializer):
-  recipient = RecipientSerializer(read_only=True)
-  recipient_id = serializers.IntegerField(write_only=True)
-
-  class Meta:
-    model = Transaction
-    fields = '__all__'
-    

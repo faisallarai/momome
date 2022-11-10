@@ -1,16 +1,7 @@
-import json, hmac, hashlib, requests
+import json, requests
 from decouple import config
 
 from django.core.cache import cache
-
-def get_digest(key, data):
-  secret = bytes(key.encode('utf8'))
-  data = json.dumps(dict(data), separators=(',', ':')).encode('utf8')
-  hash = hmac.new(key=secret, digestmod=hashlib.sha512)
-  hash.update(data)
-  digest = hash.hexdigest()
-  return digest
-
 
 def validate_account_number(bank_code, account_number):
   key = f"bank/resolve?account_number={account_number}&bank_code={bank_code}"

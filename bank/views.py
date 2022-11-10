@@ -38,15 +38,23 @@ class BankView(viewsets.ModelViewSet):
   permission_classes = (BankAccessPolicy,)
   
   def create(self, request, *args, **kwargs):
-    print(Bank.objects.count())
     if Bank.objects.count() == 0:
       create_banks.delay()
+      
     serializer = self.serializer_class(self.queryset, many=True)
     return Response({'message': 'Banks created successfully.', 'data': serializer.data})
   
   def list(self, request, *args, **kwargs):
-    bank_obj = fetch_banks()
-    if Bank.objects.count() == 0:
+    banks = self.queryset
+    if Bank.objects.count() > 0:
+      serializer = self.serializer_class(self.queryset, many=True)
+      return Response({
+        "status": True,
+        "message": "Banks retrieved",
+        "data": serializer.data
+      })
+    else:
+      bank_obj = fetch_banks()
       bank_list = bank_obj.get('data')
       serializer = self.serializer_class(data=bank_list, many=True)
       serializer.is_valid(raise_exception=True)
@@ -56,6 +64,4 @@ class BankView(viewsets.ModelViewSet):
         "message": "Banks retrieved",
         "data": serializer.data
       })
-    else:
-      return Response(bank_obj)
 
